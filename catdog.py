@@ -1,14 +1,18 @@
 import os.path
 import shutil
-
 import tensorflow as tf
-
-
+import cv2
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from tensorflow.keras import layers, Sequential, optimizers
 # 设置LOG等级为 1 警告 2 错误
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
 # 1.数据分类处理
-
+'''
+Written by Luo Changhua
+'''
 # 创建文件夹
 def mkdir(path):
     if not os.path.exists(path):
@@ -16,11 +20,10 @@ def mkdir(path):
 
 # 获取当前路径
 runPath = os.getcwd()
-data_dir = runPath + '/data/'
+data_dir = runPath + '\data\\'
 mkdir(data_dir)
 
 # 对train里面的猫狗照片进行分类，分别保存到data文件夹下的不同文件夹
-
 '''
 猫: 训练数据： train/cat 共10000张
     校验数据： valid/cat 共是2500张
@@ -29,26 +32,26 @@ mkdir(data_dir)
 '''
 
 # 训练素材路径
-train_dir = data_dir + 'train/'
+train_dir = data_dir + 'train\\'
 mkdir(train_dir)
 # 校验素材路径
-valid_dir = data_dir + 'valid/'
+valid_dir = data_dir + 'valid\\'
 mkdir(valid_dir)
 
 # 猫:
 # 训练素材文件夹
-cat_dir = train_dir + 'cat/'
+cat_dir = train_dir + 'cat\\'
 mkdir(cat_dir)
 # 校验素材文件夹
-cat_val_dir = valid_dir + 'cat/'
+cat_val_dir = valid_dir + 'cat\\'
 mkdir(cat_val_dir)
 
 # 狗:
 # 训练素材文件夹
-dog_dir = train_dir + 'dog/'
+dog_dir = train_dir + 'dog\\'
 mkdir(dog_dir)
 # 校验素材文件夹
-dog_val_dir = valid_dir + 'dog/'
+dog_val_dir = valid_dir + 'dog\\'
 mkdir(dog_val_dir)
 
 # 分类图片
@@ -57,7 +60,7 @@ def move_file(file_path, target_path):
     # 提取文件名
     fileName = os.path.split(file_path)[1]
     # 拼接成目标路径
-    target_path += '/' + fileName
+    target_path += '\\' + fileName
     print(target_path)
     if os.path.exists(file_path):
         shutil.move(file_path, target_path)
@@ -79,10 +82,15 @@ def changeFile(filetype):
         # 测试素材 2500
             move_file(filename, valid_dir + filetype)
 
+'''
+%%%%%%%%%%%%%%%%%%%%%%%%
+#这里只需要执行一次即可！！
+%%%%%%%%%%%%%%%%%%%%%%%%
+'''
 # 分离猫
-changeFile('cat')
+#changeFile('cat')
 # 分离狗
-changeFile('dog')
+#changeFile('dog')
 
 
 # 图片增强数据预处理, 使用图片生成器
@@ -153,3 +161,86 @@ def img_transforms():
 # 图像预处理
 train_generator, valid_generator = img_transforms()
 
+
+
+#2.编写神经网络结构
+'''
+Written Guo Qingjun
+8层的神经网络
+    卷积层6层
+    全连接层2层
+    每两个卷积层添加一个池化层防止过拟合
+    池化层3层
+    在前两次池化后随机丢弃两次 10% 15%
+'''
+#CNN 参数依次分别为 样本的 长 宽 深 以及 样本输出个数
+def CNN(width=128, height=128, depth=3, outputNum=2):
+    model = Sequential([
+        #卷积1
+        layers.Conv2D(filters=32,       #过滤器*32
+                      kernel_size=3,    #核大小3x3
+                      padding='same',   #边缘用0填充
+                      activation='relu',#激活函数 relu
+                      input_shape=[width, height, depth]
+        ),
+        # 卷积2
+        layers.Conv2D(filters=32,  # 过滤器*32
+                      kernel_size=3,  # 核大小3x3
+                      padding='same',  # 边缘用0填充
+                      activation='relu',  # 激活函数 relu
+                      ),
+        # 池化层1
+        layers.MaxPool2D(pool_size=2,strides=(2,2),padding = "same"),
+        # 随机丢弃1
+        layers.Dropout(0.10),
+        # 卷积3
+        layers.Conv2D(filters=64,  # 过滤器*32
+                      kernel_size=3,  # 核大小3x3
+                      padding='same',  # 边缘用0填充
+                      activation='relu',  # 激活函数 relu
+                      ),
+        # 卷积4
+        layers.Conv2D(filters=64,  # 过滤器*32
+                      kernel_size=3,  # 核大小3x3
+                      padding='same',  # 边缘用0填充
+                      activation='relu',  # 激活函数 relu
+                      ),
+        # 池化层2
+        layers.MaxPool2D(pool_size=2, strides=(2, 2), padding="same"),
+        # 随机丢弃1
+        layers.Dropout(0.15),
+        # 卷积5
+        layers.Conv2D(filters=128,  # 过滤器*32
+                      kernel_size=3,  # 核大小3x3
+                      padding='same',  # 边缘用0填充
+                      activation='relu',  # 激活函数 relu
+                      ),
+        # 卷积6
+        layers.Conv2D(filters=128,  # 过滤器*32
+                      kernel_size=3,  # 核大小3x3
+                      padding='same',  # 边缘用0填充
+                      activation='relu',  # 激活函数 relu
+                      ),
+        # 池化层3
+        layers.MaxPool2D(pool_size=2, strides=(2, 2), padding="same"),
+        # 特征平铺
+        layers.Flatten(),
+        # 全连接层
+        layers.Dense(128,                  # 输出的维度大小128个特征点
+                     activation='relu'),   # 激活函数 relu
+        layers.Dense(outputNum,            # 输出2类 cat/dog
+                     activation='softmax') # 激活函数：softmax
+    ])
+    model.compile(optimizer='adam',                         #优化器
+                  loss='sparse_categorical_crossentropy',   #损失函数
+                  metrics=['accuracy']                      #准确率
+                  )
+    print(model.summary())
+    return model
+
+#调用CNN
+model = CNN(128,128,3,2)
+#保存模型
+modelPath = './model'
+mkdir(modelPath)
+output_model_file = os.path.join(modelPath,"catdog_CNNweights.h5")
