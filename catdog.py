@@ -6,6 +6,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import layers, Sequential, optimizers
+from random import randint
+
 # 设置LOG等级为 1 警告 2 错误
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
@@ -174,72 +176,29 @@ Written Guo Qingjun
     在前两次池化后随机丢弃两次 10% 15%
 '''
 #CNN 参数依次分别为 样本的 长 宽 深 以及 样本输出个数
-def CNN(width=128, height=128, depth=3, outputNum=2):
-    model = Sequential([
-        #卷积1
-        layers.Conv2D(filters=32,       #过滤器*32
-                      kernel_size=3,    #核大小3x3
-                      padding='same',   #边缘用0填充
-                      activation='relu',#激活函数 relu
-                      input_shape=[width, height, depth]
-        ),
-        # 卷积2
-        layers.Conv2D(filters=32,  # 过滤器*32
-                      kernel_size=3,  # 核大小3x3
-                      padding='same',  # 边缘用0填充
-                      activation='relu',  # 激活函数 relu
-                      ),
-        # 池化层1
-        layers.MaxPool2D(pool_size=2,strides=(2,2),padding = "same"),
-        # 随机丢弃1
-        layers.Dropout(0.10),
-        # 卷积3
-        layers.Conv2D(filters=64,  # 过滤器*32
-                      kernel_size=3,  # 核大小3x3
-                      padding='same',  # 边缘用0填充
-                      activation='relu',  # 激活函数 relu
-                      ),
-        # 卷积4
-        layers.Conv2D(filters=64,  # 过滤器*32
-                      kernel_size=3,  # 核大小3x3
-                      padding='same',  # 边缘用0填充
-                      activation='relu',  # 激活函数 relu
-                      ),
-        # 池化层2
-        layers.MaxPool2D(pool_size=2, strides=(2, 2), padding="same"),
-        # 随机丢弃1
-        layers.Dropout(0.15),
-        # 卷积5
-        layers.Conv2D(filters=128,  # 过滤器*32
-                      kernel_size=3,  # 核大小3x3
-                      padding='same',  # 边缘用0填充
-                      activation='relu',  # 激活函数 relu
-                      ),
-        # 卷积6
-        layers.Conv2D(filters=128,  # 过滤器*32
-                      kernel_size=3,  # 核大小3x3
-                      padding='same',  # 边缘用0填充
-                      activation='relu',  # 激活函数 relu
-                      ),
-        # 池化层3
-        layers.MaxPool2D(pool_size=2, strides=(2, 2), padding="same"),
-        # 特征平铺
-        layers.Flatten(),
-        # 全连接层
-        layers.Dense(128,                  # 输出的维度大小128个特征点
-                     activation='relu'),   # 激活函数 relu
-        layers.Dense(outputNum,            # 输出2类 cat/dog
-                     activation='softmax') # 激活函数：softmax
-    ])
-    model.compile(optimizer='adam',                         #优化器
-                  loss='sparse_categorical_crossentropy',   #损失函数
-                  metrics=['accuracy']                      #准确率
+def CNN():
+    model = Sequential()
+    model.add(layers.Conv2D(32, (3, 3), activation='relu',
+                            input_shape=(128, 128, 3)))
+    model.add(layers.MaxPooling2D((2, 2)))
+    model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+    model.add(layers.MaxPooling2D((2, 2)))
+    model.add(layers.Conv2D(128, (3, 3), activation='relu'))
+    model.add(layers.MaxPooling2D((2, 2)))
+    model.add(layers.Conv2D(128, (3, 3), activation='relu'))
+    model.add(layers.MaxPooling2D((2, 2)))
+    model.add(layers.Flatten())
+    model.add(layers.Dense(512, activation='relu'))
+    model.add(layers.Dense(2, activation='sigmoid'))
+    model.compile(optimizer=optimizers.RMSprop(lr=1e-4),  # 优化器
+                  loss='categorical_crossentropy',  # 损失函数
+                  metrics=['accuracy']  # 准确率
                   )
     print(model.summary())
     return model
 
 #调用CNN
-model = CNN(128,128,3,2)
+model = CNN()
 #保存模型
 modelPath = './model'
 mkdir(modelPath)
@@ -248,39 +207,51 @@ output_model_file = os.path.join(modelPath,"catdog_CNNweights.h5")
 
 #输入样本进入模型进行训练
 
-# 打印学习信息
-def plot_learning_curves(history, label, epochs, min_value, max_value):
-    data = {}
-    data[label] = history.history[label]
-    data['val_' + label] = history.history['val_' + label]
-    pd.DataFrame(data).plot(figsize=(8, 5))
-    plt.grid(True)
-    plt.axis([0, epochs, min_value, max_value])
-    plt.show()
 
 # 定义训练步数
-TRAIN_STEP = 10
+TRAIN_STEP =50
 
 # 设置回调模式
 callbacks = [
-            tf.keras.callbacks.TensorBoard(modelPath),
-            tf.keras.callbacks.ModelCheckpoint(output_model_file,
-                                            save_best_only=True,
-                                            save_weights_only=True),
-            tf.keras.callbacks.EarlyStopping(patience=5, min_delta=1e-3)
-        ]
+    tf.keras.callbacks.TensorBoard(modelPath),
+    tf.keras.callbacks.ModelCheckpoint(output_model_file,
+                                       save_best_only=True,
+                                       save_weights_only=True),
+    tf.keras.callbacks.EarlyStopping(patience=5, min_delta=1e-3)
+]
+
 
 # 开始训练
-history = model.fit(
-        train_generator,
-        epochs=TRAIN_STEP,
-        validation_data = valid_generator,
-        callbacks = callbacks
-    )
+# History = model.fit(
+#         train_generator,
+#         epochs=TRAIN_STEP,
+#         validation_data = valid_generator,
+#         callbacks = callbacks
+#     )
+# acc = History.history['accuracy']
+# val_acc = History.history['val_accuracy']
+# loss = History.history['loss']
+# val_loss = History.history['val_loss']
+#
+# epochs = range(len(acc))
+#
+# plt.plot(epochs, acc, 'bo', label='Training accuracy')
+# plt.plot(epochs, val_acc, 'b', label='Validation accuracy')
+# plt.title('Training and validation accuracy')
+# plt.legend()
+#
+# plt.figure()
+#
+# plt.plot(epochs, loss, 'go', label='Training Loss')
+# plt.plot(epochs, val_loss, 'g', label='Validation Loss')
+# plt.title('Training and validation loss')
+# plt.legend()
+#
+# plt.show()
+#显示训练曲线
 
 # 显示训练曲线
-plot_learning_curves(history, 'accuracy', TRAIN_STEP, 0, 1)
-plot_learning_curves(history, 'loss', TRAIN_STEP, 0, 5)
+
 
 
 #手动选择两张图片进行预测
@@ -295,11 +266,9 @@ plot_learning_curves(history, 'loss', TRAIN_STEP, 0, 5)
 # 参数6：特征深度
 # 参数7：结果1名称
 # 参数8：结果2名称
-def predict(cvImg,model,modelPath,modelName,width,height,depth,result1,result2):
-    model_file = os.path.join(modelPath,modelName)
-
+def predict(cvImg,model,width,height,depth,result1,result2):
     # 加载模型
-    model.load_weights(modelName)
+    model.load_weights('model\catdog_CNNweights.h5')
 
     # 缩放图像减少检测时间
     img = cv2.resize(cvImg, (width, height))
@@ -314,16 +283,28 @@ def predict(cvImg,model,modelPath,modelName,width,height,depth,result1,result2):
         print("识别结果是："+result1+"\n概率："+str(pre[0][0]))
     else:
         print("识别结果是："+result2+"\n概率："+str(pre[0][1]))
-img = cv2.imread("cat.jpg")
-cv2.imshow("img",img)
-predict(img,model,modelPath,"catvsdog_weights.h5",128,128,3,"猫","狗")
+
+
+img = cv2.imread("D:\Project\catdog\catdog\data\\test1\\1.jpg")
+cv2.imshow('img', img)
+predict(img,model,128,128,3,"猫","狗")
 cv2.waitKey(0)
 
 
+# 设置样本参数
+simpleWight = 128
+simpleHeight = 128
+simpleDepth = 3
+
+# 设置输出类型
+outputNum = 2
+result1 = "猫"
+result2 = "狗"
+
 # 随机从测试集中读取文件
 test_dir = data_dir + "test1/"
-readImg = test_dir + str(random.randint(0,12499)) + ".jpg"
+readImg = test_dir + str(randint(0,12499)) + ".jpg"
 img = cv2.imread(readImg)
-predict(img,model,modelPath,modelName,simpleWight,simpleHeight,simpleDepth,result1,result2)
+predict(img,model,simpleWight,simpleHeight,simpleDepth,result1,result2)
 cv2.imshow("img",img)
 cv2.waitKey(0)
