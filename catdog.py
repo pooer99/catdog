@@ -3,6 +3,7 @@ import shutil
 
 import tensorflow as tf
 
+<<<<<<< HEAD
 # 设置LOG等级为 1 警告 2 错误
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
@@ -151,3 +152,9 @@ def img_transforms():
 
 # 图像预处理
 train_generator, valid_generator = img_transforms()
+=======
+print(1111111)
+print("fddfdfdsfsfsg")
+print("test for GQJ")
+print(tf.__version__)
+>>>>>>> main
