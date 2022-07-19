@@ -244,3 +244,86 @@ model = CNN(128,128,3,2)
 modelPath = './model'
 mkdir(modelPath)
 output_model_file = os.path.join(modelPath,"catdog_CNNweights.h5")
+
+
+#输入样本进入模型进行训练
+
+# 打印学习信息
+def plot_learning_curves(history, label, epochs, min_value, max_value):
+    data = {}
+    data[label] = history.history[label]
+    data['val_' + label] = history.history['val_' + label]
+    pd.DataFrame(data).plot(figsize=(8, 5))
+    plt.grid(True)
+    plt.axis([0, epochs, min_value, max_value])
+    plt.show()
+
+# 定义训练步数
+TRAIN_STEP = 10
+
+# 设置回调模式
+callbacks = [
+            tf.keras.callbacks.TensorBoard(modelPath),
+            tf.keras.callbacks.ModelCheckpoint(output_model_file,
+                                            save_best_only=True,
+                                            save_weights_only=True),
+            tf.keras.callbacks.EarlyStopping(patience=5, min_delta=1e-3)
+        ]
+
+# 开始训练
+history = model.fit(
+        train_generator,
+        epochs=TRAIN_STEP,
+        validation_data = valid_generator,
+        callbacks = callbacks
+    )
+
+# 显示训练曲线
+plot_learning_curves(history, 'accuracy', TRAIN_STEP, 0, 1)
+plot_learning_curves(history, 'loss', TRAIN_STEP, 0, 5)
+
+
+#手动选择两张图片进行预测
+
+# 预测
+# 参数1：要预测的图像cv2格式
+# 参数1：模型
+# 参数2：模型路径
+# 参数3：模型名称
+# 参数4：特征宽
+# 参数5：特征高
+# 参数6：特征深度
+# 参数7：结果1名称
+# 参数8：结果2名称
+def predict(cvImg,model,modelPath,modelName,width,height,depth,result1,result2):
+    model_file = os.path.join(modelPath,modelName)
+
+    # 加载模型
+    model.load_weights(modelName)
+
+    # 缩放图像减少检测时间
+    img = cv2.resize(cvImg, (width, height))
+    # 归一化
+    img_arr = img / 255.0
+    # 重构成模型需要输入的格式
+    img_arr = img_arr.reshape((1, width, height, depth))
+    # 输入模型进行预测
+    pre = model.predict(img_arr)
+    # 打印预测结果
+    if pre[0][0] > pre[0][1]:
+        print("识别结果是："+result1+"\n概率："+str(pre[0][0]))
+    else:
+        print("识别结果是："+result2+"\n概率："+str(pre[0][1]))
+img = cv2.imread("cat.jpg")
+cv2.imshow("img",img)
+predict(img,model,modelPath,"catvsdog_weights.h5",128,128,3,"猫","狗")
+cv2.waitKey(0)
+
+
+# 随机从测试集中读取文件
+test_dir = data_dir + "test1/"
+readImg = test_dir + str(random.randint(0,12499)) + ".jpg"
+img = cv2.imread(readImg)
+predict(img,model,modelPath,modelName,simpleWight,simpleHeight,simpleDepth,result1,result2)
+cv2.imshow("img",img)
+cv2.waitKey(0)
