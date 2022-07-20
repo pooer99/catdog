@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import layers, Sequential, optimizers
 from random import randint
-
+import numpy as np
 # 设置LOG等级为 1 警告 2 错误
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
@@ -248,24 +248,21 @@ callbacks = [
 # plt.legend()
 #
 # plt.show()
-#显示训练曲线
 
-# 显示训练曲线
+#模型评估
+# test_loss, test_acc = model.evaluate(valid_generator, steps=len(valid_generator), verbose=1)
+# print('Loss: %.3f' % (test_loss * 100.0))
+# print('Accuracy: %.3f' % (test_acc * 100.0))
 
-
-
-#手动选择两张图片进行预测
 
 # 预测
 # 参数1：要预测的图像cv2格式
 # 参数1：模型
-# 参数2：模型路径
-# 参数3：模型名称
-# 参数4：特征宽
-# 参数5：特征高
-# 参数6：特征深度
-# 参数7：结果1名称
-# 参数8：结果2名称
+# 参数2：特征宽
+# 参数3：特征高
+# 参数4：特征深度
+# 参数5：结果1名称
+# 参数6：结果2名称
 def predict(cvImg,model,width,height,depth,result1,result2):
     # 加载模型
     model.load_weights('model\catdog_CNNweights.h5')
@@ -285,12 +282,6 @@ def predict(cvImg,model,width,height,depth,result1,result2):
         print("识别结果是："+result2+"\n概率："+str(pre[0][1]))
 
 
-img = cv2.imread("D:\Project\catdog\catdog\data\\test1\\1.jpg")
-cv2.imshow('img', img)
-predict(img,model,128,128,3,"猫","狗")
-cv2.waitKey(0)
-
-
 # 设置样本参数
 simpleWight = 128
 simpleHeight = 128
@@ -301,6 +292,12 @@ outputNum = 2
 result1 = "猫"
 result2 = "狗"
 
+#指定验证图形
+img = cv2.imread("data\\test1\\1.jpg")
+cv2.imshow('img', img)
+predict(img,model,simpleWight,simpleHeight,simpleDepth,result1,result2)
+cv2.waitKey(0)
+
 # 随机从测试集中读取文件
 test_dir = data_dir + "test1/"
 readImg = test_dir + str(randint(0,12499)) + ".jpg"
@@ -308,3 +305,42 @@ img = cv2.imread(readImg)
 predict(img,model,simpleWight,simpleHeight,simpleDepth,result1,result2)
 cv2.imshow("img",img)
 cv2.waitKey(0)
+
+from sklearn.metrics import confusion_matrix
+import itertools
+
+predictions = model.predict(x=valid_generator, steps= len(valid_generator), verbose=1)
+valid_generator.classes
+cm = confusion_matrix(y_true=valid_generator.classes, y_pred=np.argmax(predictions, axis=-1))
+
+
+def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues):
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks([-0.5, 1.5], classes)
+
+    print(cm)
+    ok_num = 0
+    for k in range(cm.shape[0]):
+        print(cm[k, k] / np.sum(cm[k, :]))
+        ok_num += cm[k, k]
+
+    print(ok_num / np.sum(cm))
+
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+    thresh = cm.max() / 2.0
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, cm[i, j], horizontalalignment='center', color='white' if cm[i, j] > thresh else 'black')
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predict label')
+
+cm_plot_labels = ['0-cat', '1-dog']
+
+plot_confusion_matrix(cm=cm, classes=cm_plot_labels, title='Confusion Matrix')
