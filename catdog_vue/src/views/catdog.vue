@@ -61,7 +61,10 @@ export default {
         url: 'http://127.0.0.1:5000/upload', //后端地址 url
         data: param, //提交数据
         headers: { 'Content-Type': 'multipart/form-data' }, //默认的请求头格式为json格式，而此处提交的数据是formdata，所以需要设置请求头
-      }).then(responce => {});
+      }).then(responce => {
+        var result=responce.data['reslut']
+          alert("这是：" + result);
+      });
 
       this.$message({
         message: "上传成功！",
