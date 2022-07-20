@@ -6,7 +6,7 @@ from Cnn import CNN
 import cv2
 #导入模型
 mymodel = CNN()
-mymodel.load_weights('D:\Project\catdog\catdog\model\catdog_CNNweights.h5')
+mymodel.load_weights('./model/catdog_CNNweights.h5')
 # 设置样本参数
 width = 128
 height = 128
