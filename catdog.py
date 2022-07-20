@@ -8,6 +8,9 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras import layers, Sequential, optimizers
 from random import randint
 import numpy as np
+
+from sklearn.metrics import precision_recall_curve,roc_curve
+
 # 设置LOG等级为 1 警告 2 错误
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
@@ -168,12 +171,7 @@ train_generator, valid_generator = img_transforms()
 #2.编写神经网络结构
 '''
 Written Guo Qingjun
-8层的神经网络
-    卷积层6层
-    全连接层2层
-    每两个卷积层添加一个池化层防止过拟合
-    池化层3层
-    在前两次池化后随机丢弃两次 10% 15%
+
 '''
 #CNN 参数依次分别为 样本的 长 宽 深 以及 样本输出个数
 def CNN():
@@ -197,6 +195,7 @@ def CNN():
     print(model.summary())
     return model
 
+
 #调用CNN
 model = CNN()
 #保存模型
@@ -205,10 +204,12 @@ mkdir(modelPath)
 output_model_file = os.path.join(modelPath,"catdog_CNNweights.h5")
 
 
-#输入样本进入模型进行训练
 
-
-# 定义训练步数
+'''
+%%%%%%%%%%%%%%%%%%%%%%%%
+#从这里到258行，模型训练时跑一次，之后模型保存后不必再跑
+%%%%%%%%%%%%%%%%%%%%%%%%
+'''
 TRAIN_STEP =50
 
 # 设置回调模式
@@ -220,14 +221,17 @@ callbacks = [
     tf.keras.callbacks.EarlyStopping(patience=5, min_delta=1e-3)
 ]
 
+'''
+#开始训练
+'''
 
-# 开始训练
 # History = model.fit(
 #         train_generator,
 #         epochs=TRAIN_STEP,
 #         validation_data = valid_generator,
 #         callbacks = callbacks
 #     )
+#
 # acc = History.history['accuracy']
 # val_acc = History.history['val_accuracy']
 # loss = History.history['loss']
@@ -238,7 +242,7 @@ callbacks = [
 # plt.plot(epochs, acc, 'bo', label='Training accuracy')
 # plt.plot(epochs, val_acc, 'b', label='Validation accuracy')
 # plt.title('Training and validation accuracy')
-# plt.legend()
+# plt.legend()#设置图例
 #
 # plt.figure()
 #
@@ -250,11 +254,12 @@ callbacks = [
 # plt.show()
 
 #模型评估
-# test_loss, test_acc = model.evaluate(valid_generator, steps=len(valid_generator), verbose=1)
-# print('Loss: %.3f' % (test_loss * 100.0))
-# print('Accuracy: %.3f' % (test_acc * 100.0))
+#输入数据和标签,输出损失和精确度.
+test_loss, test_acc = model.evaluate(valid_generator, steps=len(valid_generator), verbose=1)
+print('Loss: %.3f' % (test_loss * 100.0))
+print('Accuracy: %.3f' % (test_acc * 100.0))
 
-
+'''
 # 预测
 # 参数1：要预测的图像cv2格式
 # 参数1：模型
@@ -263,6 +268,7 @@ callbacks = [
 # 参数4：特征深度
 # 参数5：结果1名称
 # 参数6：结果2名称
+'''
 def predict(cvImg,model,width,height,depth,result1,result2):
     # 加载模型
     model.load_weights('model\catdog_CNNweights.h5')
@@ -292,7 +298,7 @@ outputNum = 2
 result1 = "猫"
 result2 = "狗"
 
-#指定验证图形
+#验证一张指定验证图形
 img = cv2.imread("data\\test1\\1.jpg")
 cv2.imshow('img', img)
 predict(img,model,simpleWight,simpleHeight,simpleDepth,result1,result2)
@@ -300,11 +306,12 @@ cv2.waitKey(0)
 
 # 随机从测试集中读取文件
 test_dir = data_dir + "test1/"
-readImg = test_dir + str(randint(0,12499)) + ".jpg"
-img = cv2.imread(readImg)
-predict(img,model,simpleWight,simpleHeight,simpleDepth,result1,result2)
-cv2.imshow("img",img)
-cv2.waitKey(0)
+for i in range(10):
+    readImg = test_dir + str(randint(0,12499)) + ".jpg"
+    img = cv2.imread(readImg)
+    predict(img,model,simpleWight,simpleHeight,simpleDepth,result1,result2)
+    cv2.imshow("img",img)
+    cv2.waitKey(0)
 
 from sklearn.metrics import confusion_matrix
 import itertools
@@ -344,3 +351,41 @@ def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix'
 cm_plot_labels = ['0-cat', '1-dog']
 
 plot_confusion_matrix(cm=cm, classes=cm_plot_labels, title='Confusion Matrix')
+
+
+
+def draw_pr(confidence_scores, data_labels):
+    plt.figure()
+    plt.title('PR Curve')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.grid()
+
+    # 精确率，召回率，阈值
+    precision, recall, thresholds = precision_recall_curve(data_labels, confidence_scores)
+
+    from sklearn.metrics import average_precision_score
+    AP = average_precision_score(data_labels, confidence_scores)  # 计算AP
+    plt.plot(recall, precision, label='pr_curve(AP=%0.2f)' % AP)
+    plt.legend()
+    plt.show()
+
+
+def draw_roc(confidence_scores, data_labels):
+    # 真正率，假正率
+    fpr, tpr, thresholds = roc_curve(data_labels, confidence_scores)
+    plt.figure()
+    plt.grid()
+    plt.title('Roc Curve')
+    plt.xlabel('FPR')
+    plt.ylabel('TPR')
+
+    from sklearn.metrics import auc
+    auc = auc(fpr, tpr)  # AUC计算
+    plt.plot(fpr, tpr, label='roc_curve(AUC=%0.2f)' % auc)
+    plt.legend()
+    plt.show()
+
+
+draw_pr(valid_generator.classes, np.argmax(predictions, axis=-1))
+draw_roc(valid_generator.classes, np.argmax(predictions, axis=-1))

@@ -53,39 +53,6 @@ def uploadPpt():
             'code': 200,
             'reslut': "小狗"
         }
-    # return {
-    #     'code': 200,
-    #     'messsge': "文件上传成功",
-    # }
-
-
-@app.route('/result456666666', methods = ['GET'])
-def result():
-    # global picpath
-    print(picpath)
-    Img = cv2.imread(picpath)
-
-    # 缩放图像减少检测时间
-    Img = cv2.resize(Img, (width, height))
-    # 归一化
-    img_arr = Img / 255.0
-    # 重构成模型需要输入的格式
-    img_arr = img_arr.reshape((1, width, height, depth))
-    # 输入模型进行预测
-    pre = mymodel.predict(img_arr)
-    print("识别结果是：" + "猫" + "\n概率：" + str(pre[0][0]))
-    print("识别结果是：" +"狗" + "\n概率：" + str(pre[0][1]))
-    # 打印预测结果
-    if pre[0][0] > pre[0][1]:
-         return {
-             'code': 200,
-             'reslut':"小猫咪"
-        }
-    else:
-        return {
-            'code': 200,
-            'reslut': "小狗"
-        }
 
 
 if __name__ == '__main__':
